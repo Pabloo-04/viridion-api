@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database.database import get_db, Prediction
-from app.database.schemas import PredictionRequest, PredictionResponse
+from app.database.schemas import  PredictionResponse
 from app.models.predictor import predictor
 from datetime import datetime, timedelta
 
 router = APIRouter()
 
-
+"""""
 @router.post("/watering", response_model=PredictionResponse)
 async def predict_watering(data: PredictionRequest, db: Session = Depends(get_db)):
-    """Predict if garden needs watering using ML model"""
+    Predict if garden needs watering using ML model
     
     # Get prediction from model
     result = predictor.predict_watering(
@@ -46,7 +46,7 @@ async def predict_watering(data: PredictionRequest, db: Session = Depends(get_db
         next_watering_time=next_time,
         reasoning=result.get("reasoning")
     )
-
+"""
 
 @router.get("/history")
 async def get_prediction_history(limit: int = 100, db: Session = Depends(get_db)):

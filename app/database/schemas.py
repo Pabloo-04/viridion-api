@@ -1,57 +1,97 @@
+# app/database/schemas.py
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
 
-class SensorData(BaseModel):
-    """Sensor reading data"""
+# ----------------------------
+# Sensor Reading
+# ----------------------------
+class SensorReadingBase(BaseModel):
     temperature: float = Field(..., ge=-50, le=100, description="Temperature in Celsius")
     humidity: float = Field(..., ge=0, le=100, description="Humidity percentage")
     soil_moisture: float = Field(..., ge=0, le=100, description="Soil moisture percentage")
-    light_level: Optional[float] = Field(None, ge=0, description="Light level")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    light_level: Optional[float] = Field(None, ge=0, description="Light intensity")
 
 
-class CurrentSensorResponse(BaseModel):
-    """Current sensor data response"""
-    temperature: float
-    humidity: float
-    soilMoisture: float
-    wateringStatus: bool = False
-    lastUpdate: str
+class SensorReadingCreate(SensorReadingBase):
+    """Schema for creating a sensor reading"""
+    pass
 
 
-class HistoricalDataPoint(BaseModel):
-    """Historical data point"""
-    time: str
-    temp: float
-    humidity: float
-    soil: float
+class SensorReadingResponse(SensorReadingBase):
+    """Schema for returning a sensor reading"""
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True  # allows ORM to Pydantic conversion
 
 
-class WateringSchedule(BaseModel):
-    """Watering schedule configuration"""
-    enabled: bool
-    duration: int = Field(..., ge=1, le=60, description="Duration in minutes")
-    threshold: int = Field(..., ge=0, le=100, description="Soil moisture threshold")
+# ----------------------------
+# Watering Event
+# ----------------------------
+class WateringEventBase(BaseModel):
+    duration: int = Field(..., ge=1, le=600, description="Watering duration (seconds)")
+    water_amount: Optional[float] = Field(None, ge=0, description="Water amount (liters)")
+    triggered_by: str = Field(..., description="Trigger source: manual/scheduled/ml_prediction")
 
 
-class WateringToggle(BaseModel):
-    """Toggle watering status"""
-    status: bool
+class WateringEventCreate(WateringEventBase):
+    pass
 
 
-class PredictionRequest(BaseModel):
-    """ML prediction request"""
+class WateringEventResponse(WateringEventBase):
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ----------------------------
+# Prediction
+# ----------------------------
+class PredictionBase(BaseModel):
+    should_water: bool
+    confidence: float = Field(..., ge=0, le=1)
     temperature: float
     humidity: float
     soil_moisture: float
-    hour_of_day: int = Field(..., ge=0, le=23)
 
 
-class PredictionResponse(BaseModel):
-    """ML prediction response"""
-    should_water: bool
-    confidence: float = Field(..., ge=0, le=1)
-    next_watering_time: str
-    reasoning: Optional[str] = None
+class PredictionCreate(PredictionBase):
+    pass
+
+
+class PredictionResponse(PredictionBase):
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+# ----------------------------
+# Watering Toggle (simple endpoint)
+# ----------------------------
+class WateringToggle(BaseModel):
+    """Toggle watering system on/off"""
+    status: bool
+
+# ----------------------------
+# System Status
+# ----------------------------
+class SystemStatusBase(BaseModel):
+    watering_active: bool = False
+    auto_watering_enabled: bool = True
+    duration_setting: int = Field(10, ge=1, le=600)
+    threshold_setting: int = Field(30, ge=0, le=100)
+
+
+class SystemStatusResponse(SystemStatusBase):
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

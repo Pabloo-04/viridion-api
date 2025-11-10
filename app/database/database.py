@@ -1,41 +1,78 @@
-from sqlalchemy import create_engine, Column, Integer, Float, DateTime, Boolean, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, Float, DateTime, Boolean, String, create_engine
 from app.config import settings
 
-engine = create_engine(settings.database_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# ============================================================
+# ⚙️  ASYNC ENGINE (for FastAPI routes)
+# ============================================================
+engine = create_async_engine(
+    settings.database_url,  # e.g. postgresql+asyncpg://postgres:password@db:5432/smart_garden
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
+)
+
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+# ============================================================
+# ⚙️  SYNC ENGINE (for MQTT threads / background tasks)
+# ============================================================
+# Convert async URL -> sync URL (remove "+asyncpg")
+sync_database_url = settings.database_url.replace("+asyncpg", "")
+
+sync_engine = create_engine(
+    sync_database_url,
+    echo=False,
+    pool_pre_ping=True,
+)
+
+# ✅ SessionLocal: normal (synchronous) DB session factory
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=sync_engine,
+)
+
+# ============================================================
+# 🧱  Base Model
+# ============================================================
 Base = declarative_base()
 
-
+# ============================================================
+# 📊  Tables / ORM Models
+# ============================================================
 class SensorReading(Base):
-    """Sensor readings table (time-series)"""
     __tablename__ = "sensor_readings"
-    
+
     id = Column(Integer, primary_key=True, index=True)
+    plant_id = Column(String, index=True, nullable=False)  # e.g. "plant1" or "plant2"
     timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
-    temperature = Column(Float, nullable=False)
-    humidity = Column(Float, nullable=False)
-    soil_moisture = Column(Float, nullable=False)
+    temperature = Column(Float, nullable=True)
+    humidity = Column(Float, nullable=True)
+    soil_moisture = Column(Float, nullable=True)
     light_level = Column(Float, nullable=True)
 
 
+
 class WateringEvent(Base):
-    """Watering events table"""
     __tablename__ = "watering_events"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
-    duration = Column(Integer, nullable=False)  # seconds
-    water_amount = Column(Float, nullable=True)  # liters
-    triggered_by = Column(String, nullable=False)  # 'manual', 'scheduled', 'ml_prediction'
+    duration = Column(Integer, nullable=False)
+    water_amount = Column(Float, nullable=True)
+    triggered_by = Column(String, nullable=False)  # manual/scheduled/ml_prediction
 
 
 class Prediction(Base):
-    """ML predictions table"""
     __tablename__ = "predictions"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
     should_water = Column(Boolean, nullable=False)
@@ -46,9 +83,8 @@ class Prediction(Base):
 
 
 class SystemStatus(Base):
-    """System status table"""
     __tablename__ = "system_status"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     watering_active = Column(Boolean, default=False)
@@ -56,13 +92,17 @@ class SystemStatus(Base):
     duration_setting = Column(Integer, default=10)
     threshold_setting = Column(Integer, default=30)
 
+# ============================================================
+# 🧩  Dependencies
+# ============================================================
+async def get_db():
+    """Async session for FastAPI routes."""
+    async with async_session() as session:
+        yield session
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
 
-
-def get_db():
-    """Dependency for database session"""
+def get_sync_db():
+    """Sync session generator for background tasks (like MQTT)."""
     db = SessionLocal()
     try:
         yield db
