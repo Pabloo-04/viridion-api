@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # ML Model
     model_path: str = "app/models/trained_model.pkl"
-
+    timezone: str = "America/El_Salvador"
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

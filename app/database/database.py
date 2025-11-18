@@ -1,8 +1,17 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import Column, Integer, Float, DateTime, Boolean, String, create_engine
 from app.config import settings
+
+# ============================================================
+# 🕐  TIMEZONE HELPER
+# ============================================================
+def get_local_time():
+    """Get current time in El Salvador timezone (CST - UTC-6)"""
+    return datetime.now(ZoneInfo(settings.timezone))
+
 
 # ============================================================
 # ⚙️  ASYNC ENGINE (for FastAPI routes)
@@ -52,19 +61,18 @@ class SensorReading(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     plant_id = Column(String, index=True, nullable=False)  # e.g. "plant1" or "plant2"
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=get_local_time, index=True, nullable=False)
     temperature = Column(Float, nullable=True)
     humidity = Column(Float, nullable=True)
     soil_moisture = Column(Float, nullable=True)
     light_level = Column(Float, nullable=True)
 
 
-
 class WateringEvent(Base):
     __tablename__ = "watering_events"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=get_local_time, index=True, nullable=False)
     duration = Column(Integer, nullable=False)
     water_amount = Column(Float, nullable=True)
     triggered_by = Column(String, nullable=False)  # manual/scheduled/ml_prediction
@@ -74,7 +82,7 @@ class Prediction(Base):
     __tablename__ = "predictions"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=get_local_time, index=True, nullable=False)
     should_water = Column(Boolean, nullable=False)
     confidence = Column(Float, nullable=False)
     temperature = Column(Float, nullable=False)
@@ -86,7 +94,7 @@ class SystemStatus(Base):
     __tablename__ = "system_status"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=get_local_time, nullable=False)
     watering_active = Column(Boolean, default=False)
     auto_watering_enabled = Column(Boolean, default=True)
     duration_setting = Column(Integer, default=10)
