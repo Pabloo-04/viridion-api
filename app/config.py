@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
 
     # ML Model
-    model_path: str = "app/models/trained_model.pkl"
+    model_path: str = "app/models/xgb_watering_model.pkl"
     timezone: str = "America/El_Salvador"
     model_config = SettingsConfigDict(
         env_file=".env",

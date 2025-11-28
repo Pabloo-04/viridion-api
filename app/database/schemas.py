@@ -11,6 +11,7 @@ class SensorReadingBase(BaseModel):
     humidity: float = Field(..., ge=0, le=100, description="Humidity percentage")
     soil_moisture: float = Field(..., ge=0, le=100, description="Soil moisture percentage")
     light_level: Optional[float] = Field(None, ge=0, description="Light intensity")
+    pressure : Optional[float] = Field(None, ge=0, description="Pressure kPa")
 
 
 class SensorReadingCreate(SensorReadingBase):
@@ -62,20 +63,25 @@ class PredictionBase(BaseModel):
 class PredictionCreate(PredictionBase):
     pass
 
+class WateringRequest(BaseModel):
+    soil_moisture: float
+    soil_humidity: float
+    temperature: float
 
-class PredictionResponse(PredictionBase):
-    id: int
-    timestamp: datetime
+class WateringPredictionResponse(BaseModel):
+    should_water: bool
+    confidence: float
+    method: str     # XGBoost or Fallback
 
-    class Config:
-        from_attributes = True
 
-# ----------------------------
+# -----------------------
 # Watering Toggle (simple endpoint)
 # ----------------------------
 class WateringToggle(BaseModel):
     """Toggle watering system on/off"""
     status: bool
+    plant_id: Optional[str] = None  
+    duration: int = Field(default=10, ge=1, le=600, description="Duration in seconds")
 
 # ----------------------------
 # System Status

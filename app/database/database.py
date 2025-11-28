@@ -66,7 +66,7 @@ class SensorReading(Base):
     humidity = Column(Float, nullable=True)
     soil_moisture = Column(Float, nullable=True)
     light_level = Column(Float, nullable=True)
-
+    pressure = Column(Float,nullable = True)
 
 class WateringEvent(Base):
     __tablename__ = "watering_events"

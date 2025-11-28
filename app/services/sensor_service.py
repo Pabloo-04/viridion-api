@@ -15,9 +15,9 @@ async def get_soil_history(
     stmt = select(SensorReading.soil_moisture, SensorReading.timestamp)
     if plant_id:
         stmt = stmt.where(SensorReading.plant_id == plant_id)
-    stmt = stmt.order_by(SensorReading.timestamp.asc()).limit(limit)
+    stmt = stmt.order_by(SensorReading.timestamp.desc()).limit(limit)
     result = await db.execute(stmt)
-    rows = result.all()
+    rows = result.all()[::-1]
     return [{"timestamp": r[1], "soil_moisture": r[0]} for r in rows if r[0] is not None]
 
 
@@ -28,9 +28,9 @@ async def get_temperature_history(
     stmt = select(SensorReading.temperature, SensorReading.timestamp)
     if plant_id:
         stmt = stmt.where(SensorReading.plant_id == plant_id)
-    stmt = stmt.order_by(SensorReading.timestamp.asc()).limit(limit)
+    stmt = stmt.order_by(SensorReading.timestamp.desc()).limit(limit)
     result = await db.execute(stmt)
-    rows = result.all()
+    rows = result.all()[::-1]
     return [{"timestamp": r[1], "temperature": r[0]} for r in rows if r[0] is not None]
 
 
@@ -41,7 +41,20 @@ async def get_humidity_history(
     stmt = select(SensorReading.humidity, SensorReading.timestamp)
     if plant_id:
         stmt = stmt.where(SensorReading.plant_id == plant_id)
-    stmt = stmt.order_by(SensorReading.timestamp.asc()).limit(limit)
+    stmt = stmt.order_by(SensorReading.timestamp.desc()).limit(limit)
     result = await db.execute(stmt)
-    rows = result.all()
+    rows = result.all()[::-1]
     return [{"timestamp": r[1], "humidity": r[0]} for r in rows if r[0] is not None]
+
+
+async def get_pressure_history(
+    db: AsyncSession, plant_id: Optional[str] = None, limit: int = 50
+) -> List[SensorReading]:
+    """Fetch air pressure readings."""
+    stmt = select(SensorReading.pressure, SensorReading.timestamp)
+    if plant_id:
+        stmt = stmt.where(SensorReading.plant_id == plant_id)
+    stmt = stmt.order_by(SensorReading.timestamp.desc()).limit(limit)
+    result = await db.execute(stmt)
+    rows = result.all()[::-1]
+    return [{"timestamp": r[1], "pressure": r[0]} for r in rows if r[0] is not None]

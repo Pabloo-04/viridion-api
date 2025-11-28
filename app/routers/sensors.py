@@ -41,7 +41,7 @@ async def get_soil_history(
 
 
 # ------------------------------
-# 🌡️ Air Temperature History
+#  Air Temperature History
 # ------------------------------
 @router.get("/temperature")
 async def get_temperature_history(
@@ -53,7 +53,7 @@ async def get_temperature_history(
 
 
 # ------------------------------
-# 💧 Air Humidity History
+#  Air Humidity History
 # ------------------------------
 @router.get("/humidity")
 async def get_humidity_history(
@@ -62,3 +62,14 @@ async def get_humidity_history(
     db: AsyncSession = Depends(get_db)
 ):
     return await sensor_service.get_humidity_history(db, plant_id, limit)
+
+# ------------------------------
+#  Air Humidity History
+# ------------------------------
+@router.get("/pressure")
+async def pressure_history(
+    plant_id: str | None = Query(None, description="Filter by plant ID"),
+    limit: int = Query(50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db)
+):
+    return await sensor_service.get_pressure_history(db, plant_id, limit)
