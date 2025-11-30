@@ -64,14 +64,12 @@ class PredictionCreate(PredictionBase):
     pass
 
 class WateringRequest(BaseModel):
-    soil_moisture: float
-    soil_humidity: float
-    temperature: float
+    plant_id: str = Field(default="plant1", description="Plant ID to get predictions for")
 
 class WateringPredictionResponse(BaseModel):
     should_water: bool
     confidence: float
-    method: str     # XGBoost or Fallback
+    method: str
 
 
 # -----------------------
@@ -80,7 +78,7 @@ class WateringPredictionResponse(BaseModel):
 class WateringToggle(BaseModel):
     """Toggle watering system on/off"""
     status: bool
-    plant_id: Optional[str] = None  
+    plant_id: Optional[str] = None
     duration: int = Field(default=10, ge=1, le=600, description="Duration in seconds")
 
 # ----------------------------
@@ -91,6 +89,13 @@ class SystemStatusBase(BaseModel):
     auto_watering_enabled: bool = True
     duration_setting: int = Field(10, ge=1, le=600)
     threshold_setting: int = Field(30, ge=0, le=100)
+
+class WaterTankStatus(BaseModel):
+    """Water tank status - simple boolean indicator"""
+    has_water: bool = Field(..., description="True if tank has water, False if empty")
+    status: str = Field(..., description="available/empty/unknown")
+    plant_id: str
+    last_update: Optional[str] = None
 
 
 class SystemStatusResponse(SystemStatusBase):

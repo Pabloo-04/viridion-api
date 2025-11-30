@@ -20,6 +20,9 @@ sensor_buffers = {}
 # 👇 ADD THIS: Watering state tracker
 watering_states = {}
 
+# 👇 Water tank state tracker
+water_tank_states = {}
+
 def get_or_create_buffer(plant_id: str):
     if plant_id not in sensor_buffers:
         sensor_buffers[plant_id] = {
@@ -53,6 +56,10 @@ def on_message(client, userdata, msg):
     if "/watering/status" in topic:
         handle_watering_status(topic, payload)
         return
+    
+    if "/tank/status" in topic:
+        handle_water_tank_status(topic, payload)
+        return
 
     # Handle sensor data
     match = re.match(r"smartgarden/(plant\d+)/", topic)
@@ -79,22 +86,46 @@ def handle_watering_status(topic: str, payload: str):
         plant_id = data.get("plant_id", "unknown")
         status = data.get("status", "unknown")
         is_watering = data.get("is_watering", False)
-        
+
         # 👇 UPDATE: Store the watering state globally
         watering_states[plant_id] = {
             "active": is_watering,
             "status": status,
             "last_update": datetime.now(ZoneInfo("America/El_Salvador")).isoformat()
         }
-        
+
         print(f"💧 [{plant_id}] Watering status updated: {status} (active: {is_watering})")
         print(f"   Stored state: {watering_states[plant_id]}")
-        
+
     except Exception as e:
         print(f"⚠️ Error handling watering status: {e}")
 
 
-# 👇 ADD THIS: Function to get watering state
+# -----------------------------
+# WATER TANK STATUS HANDLER
+# -----------------------------
+def handle_water_tank_status(topic: str, payload: str):
+    """Update water tank status when ESP32 reports back"""
+    try:
+        data = json.loads(payload)
+        plant_id = data.get("plant_id", "unknown")
+        has_water = data.get("has_water", False)  # Boolean value
+
+        # Store the water tank state globally
+        water_tank_states[plant_id] = {
+            "has_water": has_water,
+            "status": "available" if has_water else "empty",
+            "last_update": datetime.now(ZoneInfo("America/El_Salvador")).isoformat()
+        }
+
+        print(f"💧 [{plant_id}] Water tank status updated: {'HAS WATER' if has_water else 'EMPTY'}")
+        print(f"   Stored state: {water_tank_states[plant_id]}")
+
+    except Exception as e:
+        print(f"⚠️ Error handling water tank status: {e}")
+
+
+
 def get_watering_state(plant_id: str = "plant1"):
     """Get current watering state for a plant"""
     state = watering_states.get(plant_id, {
@@ -103,6 +134,16 @@ def get_watering_state(plant_id: str = "plant1"):
         "last_update": None
     })
     print(f"🔍 Getting watering state for {plant_id}: {state}")
+    return state
+
+def get_water_tank_state(plant_id: str = "plant1"):
+    """Get current water tank state for a plant"""
+    state = water_tank_states.get(plant_id, {
+        "has_water": False,
+        "status": "unknown",
+        "last_update": None
+    })
+    print(f"🔍 Getting water tank state for {plant_id}: {state}")
     return state
 
 

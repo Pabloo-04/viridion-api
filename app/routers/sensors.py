@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.database import get_db, SensorReading
-from app.database.schemas import SensorReadingCreate, SensorReadingResponse
-from app.services import sensor_service  # 👈 import the new service layer
+from app.database.schemas import SensorReadingCreate, SensorReadingResponse, WaterTankStatus
+from app.services import sensor_service  
 
 router = APIRouter()
 
@@ -73,3 +73,26 @@ async def pressure_history(
     db: AsyncSession = Depends(get_db)
 ):
     return await sensor_service.get_pressure_history(db, plant_id, limit)
+
+# ------------------------------
+#  Light Level History
+# ------------------------------
+
+@router.get("/light")
+async def pressure_history(
+    plant_id: str | None = Query(None, description="Filter by plant ID"),
+    limit: int = Query(50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db)
+):
+    return await sensor_service.get_light_history(db, plant_id, limit)
+
+# ------------------------------
+# 💧 Water Tank Status
+# ------------------------------
+@router.get("/tank/status", response_model=WaterTankStatus)
+async def get_tank_status(
+    plant_id: str = Query("plant1", description="Plant ID to check water tank status")
+):
+    """Get current water tank status (has water or not)"""
+    status_data = await sensor_service.get_water_tank_status(plant_id)
+    return WaterTankStatus(**status_data)
