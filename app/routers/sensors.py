@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.database import get_db, SensorReading
 from app.database.schemas import SensorReadingCreate, SensorReadingResponse, WaterTankStatus
-from app.services import sensor_service  
+from app.services import sensor_service
+from app.services.websocket_manager import ws_manager
 
 router = APIRouter()
 
@@ -96,3 +97,30 @@ async def get_tank_status(
     """Get current water tank status (has water or not)"""
     status_data = await sensor_service.get_water_tank_status(plant_id)
     return WaterTankStatus(**status_data)
+
+
+# ------------------------------
+# 🔌 WebSocket - Real-time Sensor Updates
+# ------------------------------
+@router.websocket("/ws/{plant_id}")
+async def websocket_endpoint(websocket: WebSocket, plant_id: str):
+    """
+    WebSocket endpoint for real-time sensor updates.
+    Connect to: ws://localhost:8000/api/sensors/ws/plant1
+
+    Message types received:
+    - sensor_update: Real-time sensor data
+    - watering_update: Watering status changes
+    - tank_update: Water tank status changes
+    """
+    await ws_manager.connect(websocket, plant_id)
+    try:
+        while True:
+            # Keep connection alive and listen for client messages
+            data = await websocket.receive_text()
+            # Echo back for ping/pong if needed
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, plant_id)
+        print(f"🔌 Client disconnected from {plant_id}")

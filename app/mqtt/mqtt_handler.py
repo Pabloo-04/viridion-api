@@ -3,14 +3,18 @@ import json
 import re
 import paho.mqtt.client as mqtt
 from datetime import datetime
-from zoneinfo import ZoneInfo  
+from zoneinfo import ZoneInfo
 from app.database.database import SessionLocal, SensorReading
+from app.services.websocket_manager import ws_manager
 
 BROKER = "viridion_mqtt"
 PORT = 1883
 TOPIC = "smartgarden/#"
 
 mqtt_client = mqtt.Client()
+
+# Event loop reference for WebSocket broadcasts
+event_loop = None
 
 # -----------------------------
 # Per-plant buffers
@@ -97,6 +101,13 @@ def handle_watering_status(topic: str, payload: str):
         print(f"💧 [{plant_id}] Watering status updated: {status} (active: {is_watering})")
         print(f"   Stored state: {watering_states[plant_id]}")
 
+        # Broadcast watering update via WebSocket
+        if event_loop:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.send_watering_update(plant_id, watering_states[plant_id]),
+                event_loop
+            )
+
     except Exception as e:
         print(f"⚠️ Error handling watering status: {e}")
 
@@ -120,6 +131,13 @@ def handle_water_tank_status(topic: str, payload: str):
 
         print(f"💧 [{plant_id}] Water tank status updated: {'HAS WATER' if has_water else 'EMPTY'}")
         print(f"   Stored state: {water_tank_states[plant_id]}")
+
+        # Broadcast tank update via WebSocket
+        if event_loop:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.send_tank_update(plant_id, water_tank_states[plant_id]),
+                event_loop
+            )
 
     except Exception as e:
         print(f"⚠️ Error handling water tank status: {e}")
@@ -159,10 +177,17 @@ def update_sensor_buffer(plant_id: str, data: dict):
         if key in buffer:
             buffer[key] = float(value)
             updated = True
-     
+
     if updated:
         buffer["last_update"] = datetime.utcnow()
         print(f"🧩 Updated buffer for {plant_id}: {buffer}")
+
+        # Broadcast sensor update via WebSocket
+        if event_loop:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.send_sensor_update(plant_id, dict(buffer)),
+                event_loop
+            )
 
     required = ["temperature", "humidity", "soil_moisture"]
 
@@ -229,11 +254,13 @@ def publish_watering_command(plant_id: str, status: bool, duration: int = 10):
 # STARTUP
 # -----------------------------
 def start_mqtt(loop: asyncio.AbstractEventLoop):
+    global event_loop
+    event_loop = loop  # Store for WebSocket broadcasts
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
     mqtt_client.connect(BROKER, PORT, 60)
     mqtt_client.loop_start()
-    print("🚀 MQTT listener started")
+    print("🚀 MQTT listener started (WebSocket broadcasting enabled)")
 
 
 # -----------------------------

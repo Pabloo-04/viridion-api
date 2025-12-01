@@ -45,6 +45,10 @@ class PredictionService:
             temperature=latest_reading.temperature
         )
 
+        print("Soil Moisture: ", latest_reading.soil_moisture)
+        print("Soil Humidity: ", latest_reading.humidity)
+        print("Soil Temperature: " ,latest_reading.temperature)
+
         # Save prediction to DB
         new_record = Prediction(
             should_water=prediction_result["should_water"],
